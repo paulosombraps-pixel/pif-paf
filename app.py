@@ -1,67 +1,51 @@
-from flask import Flask, render_template_string, request, redirect
+from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
-jogadores = []
-
-HTML = """
-<!doctype html>
-<html>
-<head>
-    <title>Jogo de Pontuação</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-</head>
-<body style="font-family: Arial; text-align: center; background: #0b3d0b; color: white;">
-
-<h2>Jogo de Pontuação</h2>
-
-<form method="post" action="/add">
-    <input name="nome" placeholder="Nome do jogador" required>
-    <button type="submit">Adicionar</button>
-</form>
-
-<br>
-
-{% for jogador in jogadores %}
-    <div style="margin:10px; padding:10px; border:1px solid white;">
-        <h3>{{ jogador.nome }} - {{ jogador.pontos }} pontos</h3>
-
-        {% for v in range(1,6) %}
-            <a href="/jogar/{{ jogador.nome }}/{{ v }}">
-                <button>{{ v }}</button>
-            </a>
-        {% endfor %}
-    </div>
-{% endfor %}
-
-</body>
-</html>
-"""
+# Lista global de jogadores
+nomes = []
+pontos = []
 
 @app.route("/")
 def index():
-    return render_template_string(HTML, jogadores=jogadores)
+    return render_template("index.html")
 
-@app.route("/add", methods=["POST"])
-def add():
-    nome = request.form["nome"]
-    jogadores.append({"nome": nome, "pontos": 0})
-    return redirect("/")
+@app.route("/jogar", methods=["POST"])
+def jogar():
+    data = request.get_json()
+    jogador = data["jogador"]
+    valor = data["valor"]
 
-@app.route("/jogar/<nome>/<int:valor>")
-def jogar(nome, valor):
-    total_ganho = 0
+    if jogador >= 0:
+        total_ganho = valor * (len(pontos)-1)
+        for i in range(len(pontos)):
+            if i != jogador:
+                pontos[i] -= valor
+        pontos[jogador] += total_ganho
 
-    for jogador in jogadores:
-        if jogador["nome"] != nome:
-            jogador["pontos"] -= valor
-            total_ganho += valor
+    return jsonify({"nomes": nomes, "pontos": pontos})
 
-    for jogador in jogadores:
-        if jogador["nome"] == nome:
-            jogador["pontos"] += total_ganho
+@app.route("/add_jogador", methods=["POST"])
+def add_jogador():
+    data = request.get_json()
+    nome = data["nome"]
+    nomes.append(nome)
+    pontos.append(0)
+    return jsonify({"nomes": nomes, "pontos": pontos})
 
-    return redirect("/")
+@app.route("/remover_jogador", methods=["POST"])
+def remover_jogador():
+    data = request.get_json()
+    index = data["index"]
+    nomes.pop(index)
+    pontos.pop(index)
+    return jsonify({"nomes": nomes, "pontos": pontos})
+
+@app.route("/reset", methods=["POST"])
+def reset():
+    global pontos
+    pontos = [0]*len(pontos)
+    return jsonify({"nomes": nomes, "pontos": pontos})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
