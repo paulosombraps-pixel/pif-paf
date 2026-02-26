@@ -29,6 +29,8 @@ def jogar():
 def add_jogador():
     data = request.get_json()
     nome = data["nome"]
+    if nome in nomes:
+        return jsonify({"nomes": nomes, "pontos": pontos})
     nomes.append(nome)
     pontos.append(0)
     return jsonify({"nomes": nomes, "pontos": pontos})
